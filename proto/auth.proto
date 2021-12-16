@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "/.;proto";
+
+service ChatAuth {
+    rpc RPCLogin (LoginRequest) returns (AuthResponse);
+    rpc RPCRegister (RegisterRequest) returns (AuthResponse);
+    rpc RPCLogout (LogoutRequest) returns (AuthResponse);
+}
+
+message LoginRequest {
+    string userName=1;
+    string passWord=2;
+}
+
+message LogoutRequest {
+    int32 uid=1;
+    string token=2;
+}
+
+message RegisterRequest {
+    string userName=1;
+    string passWord=2;
+}
+
+message AuthResponse {
+    int32 code=1;
+    string msg=2;
+}
