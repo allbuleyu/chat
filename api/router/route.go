@@ -24,6 +24,7 @@ func initUserRouter(r *gin.Engine) *gin.RouterGroup {
 		user.POST("/login", handler.Login)
 		user.POST("/register", handler.Register)
 		user.POST("/checkAuth", handler.CheckAuth)
+		user.POST("/logout", handler.Logout)
 	}
 
 	return user

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -53,4 +54,14 @@ func TestCreate(t *testing.T) {
 	db.Create(&uu)
 
 	fmt.Println(uu)
+}
+
+func TestRedis(t *testing.T) {
+	rdb := GetRedis()
+	ctx, cancle := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancle()
+	err := rdb.Set(ctx, "mychat", "hello redis", time.Hour).Err()
+	if err != nil {
+		t.Error(err)
+	}
 }

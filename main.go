@@ -16,8 +16,9 @@ func main() {
 	var module string
 	// switch reloadconf 重新加载配置到内存
 	flag.StringVar(&module, "m", "", "assign run module")
-	fmt.Fprintf(os.Stdout, "start run %s module", module)
 	flag.Parse()
+
+	fmt.Fprintf(os.Stdout, "start run %s module \n", module)
 
 	switch module {
 	case "api":

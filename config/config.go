@@ -43,6 +43,20 @@ func GetMysqlConf() *MysqlConf {
 	}
 }
 
+type RedisConf struct {
+	Host, Port, User, Password, Database string
+}
+
+func GetRedisConf() *RedisConf {
+	my := conf.Section("redis")
+	return &RedisConf{
+		Host: my.Key("host").String(),
+		Port: my.Key("port").String(),
+
+		Database: "0",
+	}
+}
+
 type RPCConf struct {
 	Port string
 }

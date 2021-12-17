@@ -12,6 +12,9 @@ import (
 	"github.com/gin-gonic/gin/binding"
 )
 
+// 用于 rpc 请求的 ctx
+var RPCctx = context.Background()
+
 type FormRegister struct {
 	UserName string `form:"userName" json:"userName" binding:"required"`
 	Password string `form:"passWord" json:"passWord" binding:"required"`
@@ -57,7 +60,7 @@ func Login(c *gin.Context) {
 	}
 
 	// err 永远是 nil 所以不判断
-	rep, _ := client.RPCLogin(context.Background(), rd)
+	rep, _ := client.RPCLogin(RPCctx, rd)
 	if rep.Code != 0 {
 		FailResponse(c, errors.New(rep.Msg))
 		return
@@ -87,7 +90,7 @@ func Register(c *gin.Context) {
 	}
 
 	// err 永远是 nil 所以不判断
-	rep, _ := client.RPCRegister(context.Background(), rd)
+	rep, _ := client.RPCRegister(RPCctx, rd)
 	if rep.Code != 0 {
 		FailResponse(c, errors.New(rep.Msg))
 		return
@@ -105,4 +108,30 @@ func CheckAuth(c *gin.Context) {
 			Data: "",
 		})
 	}
+}
+
+func Logout(c *gin.Context) {
+	token := c.Param("authToken")
+
+	// grpc
+	conn, client, err := rpc.GetClientConn()
+	if err != nil {
+		FailResponse(c, err)
+		return
+	}
+	defer conn.Close()
+
+	rd := &proto.LogoutRequest{
+		Token: token,
+		Uid:   123,
+	}
+
+	// err 永远是 nil 所以不判断
+	rep, _ := client.RPCLogout(RPCctx, rd)
+	if rep.Code != 0 {
+		FailResponse(c, errors.New(rep.Msg))
+		return
+	}
+
+	SuccessResponse(c, rd.Token)
 }

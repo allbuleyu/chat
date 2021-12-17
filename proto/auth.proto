@@ -28,4 +28,5 @@ message RegisterRequest {
 message AuthResponse {
     int32 code=1;
     string msg=2;
+    string token=3;
 }

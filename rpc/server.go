@@ -61,7 +61,7 @@ func (s *rpcServer) RPCRegister(ctx context.Context, in *proto.RegisterRequest) 
 }
 
 func (s *rpcServer) RPCLogout(ctx context.Context, in *proto.LogoutRequest) (*proto.AuthResponse, error) {
-	if in.Uid == 0 || in.Token == "" {
+	if in.Token == "" {
 		return &proto.AuthResponse{
 			Code: 1,
 			Msg:  "uid or token invalid!",
@@ -69,6 +69,24 @@ func (s *rpcServer) RPCLogout(ctx context.Context, in *proto.LogoutRequest) (*pr
 	}
 
 	err := logout(in)
+	rep := &proto.AuthResponse{}
+	if err != nil {
+		rep.Code = 1
+		rep.Msg = fmt.Sprint(err)
+	}
+
+	return rep, nil
+}
+
+func (s *rpcServer) RPCCheckToken(ctx context.Context, in *proto.LogoutRequest) (*proto.AuthResponse, error) {
+	if in.Token == "" {
+		return &proto.AuthResponse{
+			Code: 1,
+			Msg:  "uid or token invalid!",
+		}, nil
+	}
+
+	err := checkToken(in)
 	rep := &proto.AuthResponse{}
 	if err != nil {
 		rep.Code = 1
