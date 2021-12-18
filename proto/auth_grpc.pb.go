@@ -21,6 +21,7 @@ type ChatAuthClient interface {
 	RPCLogin(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	RPCRegister(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	RPCLogout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*AuthResponse, error)
+	RPCCheckToken(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 }
 
 type chatAuthClient struct {
@@ -58,6 +59,15 @@ func (c *chatAuthClient) RPCLogout(ctx context.Context, in *LogoutRequest, opts 
 	return out, nil
 }
 
+func (c *chatAuthClient) RPCCheckToken(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
+	out := new(AuthResponse)
+	err := c.cc.Invoke(ctx, "/proto.ChatAuth/RPCCheckToken", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatAuthServer is the server API for ChatAuth service.
 // All implementations must embed UnimplementedChatAuthServer
 // for forward compatibility
@@ -65,6 +75,7 @@ type ChatAuthServer interface {
 	RPCLogin(context.Context, *LoginRequest) (*AuthResponse, error)
 	RPCRegister(context.Context, *RegisterRequest) (*AuthResponse, error)
 	RPCLogout(context.Context, *LogoutRequest) (*AuthResponse, error)
+	RPCCheckToken(context.Context, *LogoutRequest) (*AuthResponse, error)
 	mustEmbedUnimplementedChatAuthServer()
 }
 
@@ -80,6 +91,9 @@ func (UnimplementedChatAuthServer) RPCRegister(context.Context, *RegisterRequest
 }
 func (UnimplementedChatAuthServer) RPCLogout(context.Context, *LogoutRequest) (*AuthResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RPCLogout not implemented")
+}
+func (UnimplementedChatAuthServer) RPCCheckToken(context.Context, *LogoutRequest) (*AuthResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RPCCheckToken not implemented")
 }
 func (UnimplementedChatAuthServer) mustEmbedUnimplementedChatAuthServer() {}
 
@@ -148,6 +162,24 @@ func _ChatAuth_RPCLogout_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatAuth_RPCCheckToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatAuthServer).RPCCheckToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.ChatAuth/RPCCheckToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatAuthServer).RPCCheckToken(ctx, req.(*LogoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatAuth_ServiceDesc is the grpc.ServiceDesc for ChatAuth service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -166,6 +198,10 @@ var ChatAuth_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RPCLogout",
 			Handler:    _ChatAuth_RPCLogout_Handler,
+		},
+		{
+			MethodName: "RPCCheckToken",
+			Handler:    _ChatAuth_RPCCheckToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

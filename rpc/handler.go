@@ -1,7 +1,9 @@
 package rpc
 
 import (
+	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -9,6 +11,10 @@ import (
 	"github.com/allbuleyu/chat/database"
 	"github.com/allbuleyu/chat/proto"
 	"github.com/bwmarrin/snowflake"
+)
+
+const (
+	redisPrefix string = "Sess_"
 )
 
 type User struct {
@@ -29,93 +35,83 @@ func (User) TableName() string {
 	return "user"
 }
 
-func register(in *proto.RegisterRequest) error {
+func register(in *proto.RegisterRequest) (string, error) {
 	db, err := database.GetMysql()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var user User
 	db.Where("username=?", in.UserName).Find(&user)
 	if user.Id != 0 {
-		return newError("username has exist!")
+		return "", newError("username has exist!")
 	}
 
+	user.Username = in.UserName
 	user.Password = in.PassWord
-	user.Token = generateToken(GetSnowflakeId())
 	user.CreateAt = time.Now()
 	user.UpdateAt = time.Now()
 
 	db.Create(&user)
 
-	return err
+	return redisSet(in.UserName, user)
 }
 
-func login(in *proto.LoginRequest) error {
+func login(in *proto.LoginRequest) (string, error) {
 	db, err := database.GetMysql()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var user User
-	user.Username = in.UserName
-	err = db.Find(&user).Error
+
+	err = db.Where("username=?", in.UserName).Find(&user).Error
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if user.Password != in.PassWord {
-		return newError("pwd is wrong!")
+		return "", newError("pwd is wrong!")
 	}
 
-	user.Token = generateToken(GetSnowflakeId())
-	err = db.Select("token").Update(&user).Error
-
-	return err
+	return redisSet(in.UserName, user)
 }
 
 func logout(in *proto.LogoutRequest) error {
-	db, err := database.GetMysql()
-	if err != nil {
-		return err
-	}
+	rdb := database.GetRedis()
 
-	var user User
-	user.Id = int(in.Uid)
-	err = db.Find(&user).Error
-	if err != nil {
-		return err
-	}
-
-	if user.Token != in.Token {
-		return newError("wrong token!")
-	}
-
-	user.Token = ""
-	user.UpdateAt = time.Now()
-	err = db.Select("token").Update(&user).Error
-
-	return err
+	return rdb.Del(context.Background(), redisPrefix+in.Token).Err()
 }
 
-func checkToken(in *proto.LogoutRequest) error {
-	db, err := database.GetMysql()
+func checkToken(in *proto.LogoutRequest) (User, error) {
+	return redisGet(redisPrefix + in.Token)
+}
+
+func redisSet(k string, v interface{}) (string, error) {
+	rdb := database.GetRedis()
+	token := GetSnowflakeId()
+	key := redisPrefix + token
+
+	vv, err := json.Marshal(&v)
 	if err != nil {
-		return err
+		return "", err
 	}
+	err = rdb.Set(context.Background(), key, vv, time.Hour).Err()
 
-	var user User
-	user.Id = int(in.Uid)
-	err = db.Find(&user).Error
+	return token, err
+}
+
+func redisGet(k string) (User, error) {
+	rdb := database.GetRedis()
+	s, err := rdb.Get(context.Background(), k).Result()
+	user := User{}
 	if err != nil {
-		return err
+		return user, err
 	}
 
-	if user.Token != in.Token {
-		return newError("wrong token!")
-	}
+	err = json.Unmarshal([]byte(s), &user)
 
-	return nil
+	return user, err
 }
 
 func generateToken(s string) string {

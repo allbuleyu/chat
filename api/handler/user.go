@@ -21,9 +21,9 @@ type FormRegister struct {
 }
 
 type ResponseData struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    string `json:"data"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
 }
 
 func FailResponse(c *gin.Context, err error) {
@@ -33,7 +33,7 @@ func FailResponse(c *gin.Context, err error) {
 	})
 }
 
-func SuccessResponse(c *gin.Context, data string) {
+func SuccessResponse(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusOK, &ResponseData{
 		Code: 0,
 		Data: data,
@@ -66,7 +66,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	SuccessResponse(c, rd.UserName)
+	SuccessResponse(c, rep.Token)
 }
 
 func Register(c *gin.Context) {
@@ -96,22 +96,23 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	SuccessResponse(c, rd.UserName)
+	SuccessResponse(c, rep.Token)
 }
 
 func CheckAuth(c *gin.Context) {
-	token := c.Param("authToken")
-
-	if token == "" {
-		c.JSON(http.StatusOK, &ResponseData{
-			Code: 0,
-			Data: "",
-		})
+	type Token struct {
+		AuthToken string
 	}
-}
+	var token Token
+	if err := c.ShouldBindBodyWith(&token, binding.JSON); err != nil {
+		FailResponse(c, err)
+		return
+	}
 
-func Logout(c *gin.Context) {
-	token := c.Param("authToken")
+	if token.AuthToken == "" {
+		FailResponse(c, errors.New("token is empty!"))
+		c.Next()
+	}
 
 	// grpc
 	conn, client, err := rpc.GetClientConn()
@@ -122,8 +123,43 @@ func Logout(c *gin.Context) {
 	defer conn.Close()
 
 	rd := &proto.LogoutRequest{
-		Token: token,
-		Uid:   123,
+		Token: token.AuthToken,
+	}
+
+	// err 永远是 nil 所以不判断
+	rep, _ := client.RPCCheckToken(RPCctx, rd)
+	if rep.Code != 0 {
+		FailResponse(c, errors.New(rep.Msg))
+		return
+	}
+
+	c.Set("userName", rep.Token)
+
+	res := make(map[string]interface{})
+	res["userName"] = rep.Token
+	SuccessResponse(c, res)
+}
+
+func Logout(c *gin.Context) {
+	type Token struct {
+		AuthToken string
+	}
+	var token Token
+	if err := c.ShouldBindBodyWith(&token, binding.JSON); err != nil {
+		FailResponse(c, err)
+		return
+	}
+
+	// grpc
+	conn, client, err := rpc.GetClientConn()
+	if err != nil {
+		FailResponse(c, err)
+		return
+	}
+	defer conn.Close()
+
+	rd := &proto.LogoutRequest{
+		Token: token.AuthToken,
 	}
 
 	// err 永远是 nil 所以不判断

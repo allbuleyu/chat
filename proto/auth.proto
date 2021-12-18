@@ -3,11 +3,13 @@ syntax = "proto3";
 package proto;
 
 option go_package = "/.;proto";
+// protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative proto/*.proto
 
 service ChatAuth {
     rpc RPCLogin (LoginRequest) returns (AuthResponse);
     rpc RPCRegister (RegisterRequest) returns (AuthResponse);
     rpc RPCLogout (LogoutRequest) returns (AuthResponse);
+    rpc RPCCheckToken(LogoutRequest) returns (AuthResponse);
 }
 
 message LoginRequest {

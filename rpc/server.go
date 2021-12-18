@@ -32,11 +32,12 @@ func (s *rpcServer) RPCLogin(ctx context.Context, in *proto.LoginRequest) (*prot
 
 	// others check, register
 	rep := &proto.AuthResponse{}
-	err := login(in)
+	token, err := login(in)
 	if err != nil {
 		rep.Code = 1
 		rep.Msg = fmt.Sprint(err)
 	}
+	rep.Token = token
 
 	return rep, nil
 }
@@ -51,11 +52,12 @@ func (s *rpcServer) RPCRegister(ctx context.Context, in *proto.RegisterRequest) 
 
 	// others check, register
 	rep := &proto.AuthResponse{}
-	err := register(in)
+	token, err := register(in)
 	if err != nil {
 		rep.Code = 1
 		rep.Msg = fmt.Sprint(err)
 	}
+	rep.Token = token
 
 	return rep, nil
 }
@@ -64,7 +66,7 @@ func (s *rpcServer) RPCLogout(ctx context.Context, in *proto.LogoutRequest) (*pr
 	if in.Token == "" {
 		return &proto.AuthResponse{
 			Code: 1,
-			Msg:  "uid or token invalid!",
+			Msg:  "token invalid!",
 		}, nil
 	}
 
@@ -86,12 +88,16 @@ func (s *rpcServer) RPCCheckToken(ctx context.Context, in *proto.LogoutRequest) 
 		}, nil
 	}
 
-	err := checkToken(in)
+	user, err := checkToken(in)
+	if user.Id == 0 && err == nil {
+		err = newError("wrong token!")
+	}
 	rep := &proto.AuthResponse{}
 	if err != nil {
 		rep.Code = 1
 		rep.Msg = fmt.Sprint(err)
 	}
+	rep.Token = user.Username
 
 	return rep, nil
 }
