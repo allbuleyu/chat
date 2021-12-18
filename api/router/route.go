@@ -23,8 +23,11 @@ func initUserRouter(r *gin.Engine) *gin.RouterGroup {
 	{
 		user.POST("/login", handler.Login)
 		user.POST("/register", handler.Register)
-		user.POST("/checkAuth", handler.CheckAuth)
-		user.POST("/logout", handler.Logout)
+		user.Use(handler.CheckToken())
+		{
+			user.POST("/checkAuth", handler.CheckAuth)
+			user.POST("/logout", handler.Logout)
+		}
 	}
 
 	return user
@@ -32,10 +35,12 @@ func initUserRouter(r *gin.Engine) *gin.RouterGroup {
 
 func initPushRouter(r *gin.Engine) *gin.RouterGroup {
 	push := r.Group("/push")
+	push.Use(handler.CheckToken())
 	{
-		push.POST("/login", handler.Login)
-		push.POST("/register", handler.Register)
-		push.POST("/checkAuth", handler.CheckAuth)
+		push.POST("/push", handler.Push)
+		push.POST("/pushRoom", handler.PushRoom)
+		push.POST("/count", handler.Count)
+		push.POST("/getRoomInfo", handler.GetRoomInfo)
 	}
 
 	return push

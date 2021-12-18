@@ -99,44 +99,50 @@ func Register(c *gin.Context) {
 	SuccessResponse(c, rep.Token)
 }
 
-func CheckAuth(c *gin.Context) {
-	type Token struct {
-		AuthToken string
-	}
-	var token Token
-	if err := c.ShouldBindBodyWith(&token, binding.JSON); err != nil {
-		FailResponse(c, err)
-		return
-	}
+func CheckToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		type Token struct {
+			AuthToken string
+		}
+		var token Token
+		if err := c.ShouldBindBodyWith(&token, binding.JSON); err != nil {
+			FailResponse(c, err)
+			c.Abort()
+		}
 
-	if token.AuthToken == "" {
-		FailResponse(c, errors.New("token is empty!"))
+		if token.AuthToken == "" {
+			FailResponse(c, errors.New("token is empty!"))
+			c.Abort()
+		}
+
+		// grpc
+		conn, client, err := rpc.GetClientConn()
+		if err != nil {
+			FailResponse(c, err)
+			c.Abort()
+		}
+		defer conn.Close()
+
+		rd := &proto.LogoutRequest{
+			Token: token.AuthToken,
+		}
+
+		// err 永远是 nil 所以不判断
+		rep, _ := client.RPCCheckToken(RPCctx, rd)
+		if rep.Code != 0 {
+			FailResponse(c, errors.New(rep.Msg))
+			c.Abort()
+		}
+
+		c.Set("userName", rep.Token)
+		c.Set("token", token.AuthToken)
 		c.Next()
 	}
+}
 
-	// grpc
-	conn, client, err := rpc.GetClientConn()
-	if err != nil {
-		FailResponse(c, err)
-		return
-	}
-	defer conn.Close()
-
-	rd := &proto.LogoutRequest{
-		Token: token.AuthToken,
-	}
-
-	// err 永远是 nil 所以不判断
-	rep, _ := client.RPCCheckToken(RPCctx, rd)
-	if rep.Code != 0 {
-		FailResponse(c, errors.New(rep.Msg))
-		return
-	}
-
-	c.Set("userName", rep.Token)
-
+func CheckAuth(c *gin.Context) {
 	res := make(map[string]interface{})
-	res["userName"] = rep.Token
+	res["userName"] = c.GetString("userName")
 	SuccessResponse(c, res)
 }
 
