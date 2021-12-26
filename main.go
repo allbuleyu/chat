@@ -10,6 +10,7 @@ import (
 	"github.com/allbuleyu/chat/api"
 	_ "github.com/allbuleyu/chat/config"
 	"github.com/allbuleyu/chat/site"
+	"github.com/allbuleyu/chat/websocket"
 )
 
 func main() {
@@ -27,6 +28,8 @@ func main() {
 		rpc.New().Run()
 	case "site":
 		site.New().Run()
+	case "ws":
+		websocket.New().Run()
 	default:
 		fmt.Println("You are not input module type!")
 	}

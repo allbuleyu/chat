@@ -92,3 +92,15 @@ func GetSiteConf() *SiteConf {
 		Port: rpc.Key("port").String(),
 	}
 }
+
+type WsConf struct {
+	Port string
+}
+
+func GetWsConf() *WsConf {
+	rpc := conf.Section("websocket")
+
+	return &WsConf{
+		Port: rpc.Key("port").String(),
+	}
+}
